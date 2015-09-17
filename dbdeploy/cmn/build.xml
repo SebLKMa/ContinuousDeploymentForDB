@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<project name="dbdeploy_cmn" default="default">
+    <!-- For details, see https://code.google.com/p/dbdeploy/wiki/UsingTheAntInterface -->
+    <property name="db.driver" value="oracle.jdbc.OracleDriver" />
+    <property name="db.url" value="jdbc:oracle:thin:@localhost:1521:orcl11" />
+	<property name="db.user.sysdba" value="sys as sysdba" />
+	<property name="db.user.sysdba.password" value="Password123" />	
+	<property name="db.user.schema" value="cmn" />
+	<property name="db.user.schema.password" value="cmn" />
+	<property name="db.changeLogTableName" value ="v1_0_changelog" />
+	<property name="db.lastChangeToApply" value=""/>
+
+    <path id="sql.classpath">
+        <fileset dir=".">
+            <include name="ojdbc6.jar"/>
+        </fileset>
+    </path>
+
+    <path id="dbdeploy.classpath">
+        <!-- include the dbdeploy-ant jar -->
+        <fileset dir=".">
+            <include name="dbdeploy-ant-*.jar"/>
+        </fileset>
+
+        <!-- the dbdeploy task also needs the database driver jar on the classpath -->
+        <path refid="sql.classpath" />
+    </path>
+
+    <taskdef name="dbdeploy" classname="com.dbdeploy.AntTarget" classpathref="dbdeploy.classpath"/>
+
+    <target name="default" depends="apply-cmn_v1_0"/>
+	
+	<target name="clean" depends="drop-all, create-changelog-table, create-app-tables"/>
+
+    <target name="drop-all">
+        <sql driver="${db.driver}" url="${db.url}"
+             userid="${db.user.sysdba}" password="${db.user.sysdba.password}" print="true" delimiter=";" delimitertype="row" classpathref="sql.classpath" >
+             <fileset file="cmn_drop_all.sql"/>
+        </sql>
+    </target>
+	
+    <target name="create-changelog-table">
+        <sql driver="${db.driver}" url="${db.url}"
+             userid="${db.user.schema}" password="${db.user.schema.password}" print="true" classpathref="sql.classpath" >
+            <fileset file="cmn_create_v1_0_schemaVersion.sql"/>
+        </sql>
+    </target>
+
+	<!--
+	delimitertype="row" is not used
+	-->
+    <target name="create-app-tables">
+        <sql driver="${db.driver}" 
+			 url="${db.url}"
+             userid="${db.user.schema}" 
+			 password="${db.user.schema.password}" 
+			 print="true" 
+			 delimiter=";" 
+			 classpathref="sql.classpath" >
+			 <fileset file="cmn_createAppTables.sql"/>
+        </sql>
+    </target>
+	
+	<!--
+    <target name="insert-data">
+        <sql driver="${db.driver}" url="${db.url}"
+			 userid="${db.user.schema}" password="${db.user.schema.password}" print="true" classpathref="sql.classpath" >
+            <fileset file="002_second.sql"/>
+        </sql>
+    </target>
+	-->
+	
+    <target name="apply-cmn_v1_0" description="apply deltas to schema">
+
+        <!-- if you don't specify an output file, dbdeploy will apply the changes for you
+
+         you may need to specify delimiter and delimitertype for your scripts to be split properly - these
+         work the same as in the ant sql task, see http://ant.apache.org/manual/CoreTasks/sql.html
+		 
+		 By default, all deltas will be applied. To restrict, use lastChangeToApply="${db.lastChangeToApply}"
+        -->
+        <dbdeploy driver="${db.driver}" url="${db.url}"
+                  userid="${db.user.schema}" 
+				  password="${db.user.schema.password}"
+				  delimiter=";" 
+				  delimitertype="row"
+				  changeLogTableName="${db.changeLogTableName}"
+                  dir="./cmn_v1_0"
+                />
+    </target>
+
+    <target name="dump-tables">
+        <sql driver="${db.driver}" url="${db.url}"
+             userid="${db.user.schema}" password="${db.user.schema.password}" print="true" classpathref="sql.classpath" >
+            select count(*) from cmn_emp;
+        </sql>
+    </target>
+
+</project>
